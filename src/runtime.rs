@@ -5,14 +5,18 @@ use tokio::fs;
 use tracing::{info, warn};
 
 use crate::AppState;
-use crate::models::{AnalyzeOnlineMediaRequest, AnalyzeOnlineMediaResponse, CreateTaskRequest, Manifest, OutputFile};
+use crate::models::{
+    AnalyzeOnlineMediaRequest, AnalyzeOnlineMediaResponse, CreateTaskRequest, Manifest, OutputFile,
+};
 use crate::music::{
     MusicMetadata, extract_music_metadata, is_music_content_type, music_metadata_from_analysis,
     music_metadata_from_task,
 };
 use crate::native::ytdlp_download;
 use crate::providers::analyze_url;
-use crate::thumbnail::{DownloadedThumbnail, download_thumbnail_artifact, write_thumbnail_sidecar_files};
+use crate::thumbnail::{
+    DownloadedThumbnail, download_thumbnail_artifact, write_thumbnail_sidecar_files,
+};
 use crate::tooling::display_path;
 
 fn sanitize_path_component(value: &str) -> String {
@@ -53,7 +57,11 @@ fn build_import_dir_name(request: &CreateTaskRequest) -> String {
 }
 
 fn build_source_site_dir_name(request: &CreateTaskRequest) -> Option<String> {
-    request.metadata.source_site.as_deref().map(sanitize_path_component)
+    request
+        .metadata
+        .source_site
+        .as_deref()
+        .map(sanitize_path_component)
 }
 
 fn build_source_id_dir_name(request: &CreateTaskRequest) -> Option<String> {
@@ -80,12 +88,23 @@ fn should_rename_music_output(path: &Path) -> bool {
     )
 }
 
-fn merged_music_metadata(request: &CreateTaskRequest, analyze: &AnalyzeOnlineMediaResponse) -> MusicMetadata {
+fn merged_music_metadata(
+    request: &CreateTaskRequest,
+    analyze: &AnalyzeOnlineMediaResponse,
+) -> MusicMetadata {
     let task_metadata = music_metadata_from_task(&request.metadata);
     let analyze_metadata = music_metadata_from_analysis(analyze);
-    let raw_metadata = extract_music_metadata(request.metadata.raw_metadata.as_ref().or(analyze.raw_metadata.as_ref()));
+    let raw_metadata = extract_music_metadata(
+        request
+            .metadata
+            .raw_metadata
+            .as_ref()
+            .or(analyze.raw_metadata.as_ref()),
+    );
 
-    task_metadata.merge_with(&analyze_metadata).merge_with(&raw_metadata)
+    task_metadata
+        .merge_with(&analyze_metadata)
+        .merge_with(&raw_metadata)
 }
 
 fn build_music_target_dir(
@@ -123,7 +142,10 @@ fn build_music_output_name(path: &Path, music_metadata: &MusicMetadata) -> Optio
     }
 
     let extension = path.extension().and_then(|ext| ext.to_str())?;
-    let title = music_metadata.title.as_deref().map(sanitize_path_component)?;
+    let title = music_metadata
+        .title
+        .as_deref()
+        .map(sanitize_path_component)?;
 
     let stem = if let Some(track_number) = music_metadata.track_number {
         format!("{track_number:02}. {title}")
@@ -135,7 +157,10 @@ fn build_music_output_name(path: &Path, music_metadata: &MusicMetadata) -> Optio
 }
 
 fn with_record_id_suffix(path: &Path, record_id: &str) -> PathBuf {
-    let stem = path.file_stem().and_then(|value| value.to_str()).unwrap_or("output");
+    let stem = path
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or("output");
     let suffix = format!("{} [{}]", stem, sanitize_path_component(record_id));
     match path.extension().and_then(|ext| ext.to_str()) {
         Some(extension) => path.with_file_name(format!("{suffix}.{extension}")),
@@ -183,8 +208,15 @@ fn metadata_release_date(raw_metadata: Option<&Value>) -> Option<String> {
     ))
 }
 
-fn build_online_media_nfo_content(request: &CreateTaskRequest, analyze: &AnalyzeOnlineMediaResponse) -> String {
-    let raw_metadata = request.metadata.raw_metadata.as_ref().or(analyze.raw_metadata.as_ref());
+fn build_online_media_nfo_content(
+    request: &CreateTaskRequest,
+    analyze: &AnalyzeOnlineMediaResponse,
+) -> String {
+    let raw_metadata = request
+        .metadata
+        .raw_metadata
+        .as_ref()
+        .or(analyze.raw_metadata.as_ref());
     let title = request
         .metadata
         .media_title
@@ -192,7 +224,11 @@ fn build_online_media_nfo_content(request: &CreateTaskRequest, analyze: &Analyze
         .or(request.metadata.title.as_deref())
         .or(analyze.title.as_deref())
         .unwrap_or("Online Media");
-    let original_title = request.metadata.title.as_deref().or(analyze.title.as_deref());
+    let original_title = request
+        .metadata
+        .title
+        .as_deref()
+        .or(analyze.title.as_deref());
     let plot = raw_metadata
         .and_then(|value| metadata_string_field(value, "description"))
         .or(raw_metadata.and_then(|value| metadata_string_field(value, "fulltitle")));
@@ -220,13 +256,20 @@ fn build_online_media_nfo_content(request: &CreateTaskRequest, analyze: &Analyze
         .or(analyze.source_id.as_deref())
         .or(request.metadata.external_id.as_deref())
         .or(analyze.external_id.as_deref());
-    let uploader = request.metadata.uploader.as_deref().or(analyze.uploader.as_deref());
+    let uploader = request
+        .metadata
+        .uploader
+        .as_deref()
+        .or(analyze.uploader.as_deref());
     let external_id = request
         .metadata
         .external_id
         .as_deref()
         .or(analyze.external_id.as_deref());
-    let runtime = request.metadata.duration_seconds.or(analyze.duration_seconds);
+    let runtime = request
+        .metadata
+        .duration_seconds
+        .or(analyze.duration_seconds);
 
     let mut lines = vec![
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>".to_string(),
@@ -292,7 +335,10 @@ fn build_online_media_nfo_content(request: &CreateTaskRequest, analyze: &Analyze
         lines.push(line);
     }
     if let Some(thumb) = thumbnail_url {
-        lines.push(format!("  <thumb aspect=\"poster\">{}</thumb>", escape_xml(thumb)));
+        lines.push(format!(
+            "  <thumb aspect=\"poster\">{}</thumb>",
+            escape_xml(thumb)
+        ));
     }
     lines.push("</movie>".to_string());
     format!("{}\n", lines.join("\n"))
@@ -360,7 +406,11 @@ async fn write_sidecar_nfo_files(
     Ok(())
 }
 
-fn build_download_workspace_dir(state: &AppState, request: &CreateTaskRequest, task_id: &str) -> std::path::PathBuf {
+fn build_download_workspace_dir(
+    state: &AppState,
+    request: &CreateTaskRequest,
+    task_id: &str,
+) -> std::path::PathBuf {
     // Always use the local staging_root for the temporary download workspace,
     // regardless of whether target_path is absolute (e.g. an SMB/SFTP mount).
     // yt-dlp requires a writable local directory; the final output is copied to
@@ -420,12 +470,17 @@ async fn copy_outputs_to_target(
             target_root,
             &base_name,
             &music_metadata,
-            request.metadata.uploader.as_deref().or(analyze.uploader.as_deref()),
+            request
+                .metadata
+                .uploader
+                .as_deref()
+                .or(analyze.uploader.as_deref()),
         )
     } else if request.target_folder_config_snapshot.content_type == "online_video" {
-        if let (Some(source_site), Some(source_id)) =
-            (build_source_site_dir_name(request), build_source_id_dir_name(request))
-        {
+        if let (Some(source_site), Some(source_id)) = (
+            build_source_site_dir_name(request),
+            build_source_id_dir_name(request),
+        ) {
             target_root.join(source_site).join(source_id)
         } else {
             target_root.join(&base_name)
@@ -482,13 +537,15 @@ async fn copy_outputs_to_target(
         if fs::try_exists(&destination_path).await.unwrap_or(false) {
             destination_path = with_record_id_suffix(&destination_path, &request.record_id);
         }
-        fs::copy(&source_path, &destination_path).await.map_err(|err| {
-            format!(
-                "failed to copy {} to {}: {err}",
-                display_path(&source_path),
-                display_path(&destination_path),
-            )
-        })?;
+        fs::copy(&source_path, &destination_path)
+            .await
+            .map_err(|err| {
+                format!(
+                    "failed to copy {} to {}: {err}",
+                    display_path(&source_path),
+                    display_path(&destination_path),
+                )
+            })?;
 
         let metadata = fs::metadata(&destination_path)
             .await
@@ -510,13 +567,24 @@ async fn write_manifest(
     analyze: &AnalyzeOnlineMediaResponse,
     output_files: Vec<OutputFile>,
 ) -> Result<String, String> {
-    let raw_metadata = request.metadata.raw_metadata.as_ref().or(analyze.raw_metadata.as_ref());
+    let raw_metadata = request
+        .metadata
+        .raw_metadata
+        .as_ref()
+        .or(analyze.raw_metadata.as_ref());
     let music_metadata = merged_music_metadata(request, analyze);
 
     let manifest = Manifest {
         source_url: request.url.clone(),
-        provider_id: request.provider_id.clone().unwrap_or_else(|| "unknown".into()),
-        source_site: request.metadata.source_site.clone().or(analyze.source_site.clone()),
+        provider_id: request
+            .provider_id
+            .clone()
+            .unwrap_or_else(|| "unknown".into()),
+        source_site: request
+            .metadata
+            .source_site
+            .clone()
+            .or(analyze.source_site.clone()),
         source_id: request
             .metadata
             .source_id
@@ -534,12 +602,23 @@ async fn write_manifest(
             .or(analyze.track_title.clone())
             .or(analyze.title.clone()),
         original_title: request.metadata.title.clone().or(analyze.title.clone()),
-        thumbnail_url: request.metadata.thumbnail_url.clone().or(analyze.thumbnail_url.clone()),
+        thumbnail_url: request
+            .metadata
+            .thumbnail_url
+            .clone()
+            .or(analyze.thumbnail_url.clone()),
         description: raw_metadata
             .and_then(|value| metadata_string_field(value, "description"))
             .map(str::to_string),
-        duration_seconds: request.metadata.duration_seconds.or(analyze.duration_seconds),
-        uploader: request.metadata.uploader.clone().or(analyze.uploader.clone()),
+        duration_seconds: request
+            .metadata
+            .duration_seconds
+            .or(analyze.duration_seconds),
+        uploader: request
+            .metadata
+            .uploader
+            .clone()
+            .or(analyze.uploader.clone()),
         artist: music_metadata.artist.clone(),
         album_artist: music_metadata.album_artist.clone(),
         album: music_metadata.album.clone(),
@@ -552,7 +631,11 @@ async fn write_manifest(
             .clone()
             .or_else(|| metadata_release_date(raw_metadata)),
         content_type: Some(request.target_folder_config_snapshot.content_type.clone()),
-        external_id: request.metadata.external_id.clone().or(analyze.external_id.clone()),
+        external_id: request
+            .metadata
+            .external_id
+            .clone()
+            .or(analyze.external_id.clone()),
         output_files,
         artifacts: vec![],
         raw_metadata: request
@@ -569,7 +652,8 @@ async fn write_manifest(
     };
 
     let manifest_path = staging_dir.join("manifest.json");
-    let bytes = serde_json::to_vec_pretty(&manifest).map_err(|err| format!("failed to serialize manifest: {err}"))?;
+    let bytes = serde_json::to_vec_pretty(&manifest)
+        .map_err(|err| format!("failed to serialize manifest: {err}"))?;
     fs::write(&manifest_path, bytes)
         .await
         .map_err(|err| format!("failed to write manifest: {err}"))?;
@@ -637,41 +721,57 @@ pub fn spawn_task(state: AppState, task_id: String, request: CreateTaskRequest) 
         };
 
         state.tasks.update_stage(&task_id, "importing", 92.0).await;
-        let (target_path, mut imported_files) = match copy_outputs_to_target(&request, &analyze, &staging_dir).await {
-            Ok(result) => result,
-            Err(err) => {
-                state.tasks.fail(&task_id, err).await;
-                return;
-            }
-        };
+        let (target_path, mut imported_files) =
+            match copy_outputs_to_target(&request, &analyze, &staging_dir).await {
+                Ok(result) => result,
+                Err(err) => {
+                    state.tasks.fail(&task_id, err).await;
+                    return;
+                }
+            };
 
         if let Some(thumbnail) = downloaded_thumbnail.as_ref()
-            && let Err(err) =
-                write_thumbnail_sidecar_files(Path::new(&target_path), &mut imported_files, thumbnail).await
+            && let Err(err) = write_thumbnail_sidecar_files(
+                Path::new(&target_path),
+                &mut imported_files,
+                thumbnail,
+            )
+            .await
         {
             state.tasks.fail(&task_id, err).await;
             return;
         }
 
-        if let Err(err) =
-            write_sidecar_nfo_files(&request, &analyze, Path::new(&target_path), &mut imported_files).await
+        if let Err(err) = write_sidecar_nfo_files(
+            &request,
+            &analyze,
+            Path::new(&target_path),
+            &mut imported_files,
+        )
+        .await
         {
             state.tasks.fail(&task_id, err).await;
             return;
         }
 
-        let manifest_path = match write_manifest(&staging_dir, &request, &analyze, output_files.clone()).await {
-            Ok(path) => path,
-            Err(err) => {
-                state.tasks.fail(&task_id, err).await;
-                return;
-            }
-        };
+        let manifest_path =
+            match write_manifest(&staging_dir, &request, &analyze, output_files.clone()).await {
+                Ok(path) => path,
+                Err(err) => {
+                    state.tasks.fail(&task_id, err).await;
+                    return;
+                }
+            };
 
         info!(task_id = %task_id, manifest_path = %manifest_path, staging_dir = %staging_dir.to_string_lossy(), "online media task completed in staging");
         state
             .tasks
-            .complete(&task_id, Some(manifest_path), Some(target_path), imported_files)
+            .complete(
+                &task_id,
+                Some(manifest_path),
+                Some(target_path),
+                imported_files,
+            )
             .await;
     });
 }

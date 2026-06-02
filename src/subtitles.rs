@@ -5,9 +5,11 @@ use std::{
 };
 
 use regex::Regex;
-use tokimo_package_client_api::assrt::{ASSRT_BASE_URL, ASSRT_USER_AGENT, AssrtClient, AssrtConfig};
 use scraper::{Html, Selector};
 use sevenz_rust2::decompress_file as decompress_7z_file;
+use tokimo_package_client_api::assrt::{
+    ASSRT_BASE_URL, ASSRT_USER_AGENT, AssrtClient, AssrtConfig,
+};
 use tokio::{fs, process::Command};
 use unrar::Archive as UnrarArchive;
 use uuid::Uuid;
@@ -93,14 +95,21 @@ fn matches_preferred_language(language: &str, preferred_languages: Option<&[Stri
     if preferred_languages.is_empty() {
         return true;
     }
-    if preferred_languages.iter().any(|preferred| preferred == language) {
+    if preferred_languages
+        .iter()
+        .any(|preferred| preferred == language)
+    {
         return true;
     }
     if language == "zh" {
-        return preferred_languages.iter().any(|preferred| preferred.starts_with("zh"));
+        return preferred_languages
+            .iter()
+            .any(|preferred| preferred.starts_with("zh"));
     }
     if language.starts_with("zh-") {
-        return preferred_languages.iter().any(|preferred| preferred == "zh");
+        return preferred_languages
+            .iter()
+            .any(|preferred| preferred == "zh");
     }
     false
 }
@@ -135,7 +144,11 @@ fn score_subtitle_name(name: &str, format: &str, preferred_language: &str) -> i3
         if lower.contains("kor") || name.contains('韩') || name.contains('韓') {
             score += 40;
         }
-    } else if lower.contains("chs") || lower.contains("cht") || name.contains("双语") || name.contains("雙語") {
+    } else if lower.contains("chs")
+        || lower.contains("cht")
+        || name.contains("双语")
+        || name.contains("雙語")
+    {
         score += 20;
     }
 
@@ -199,7 +212,8 @@ fn read_extracted_subtitles_from_dir(root: &Path) -> Result<Vec<ExtractedSubtitl
     let mut extracted_files = Vec::new();
 
     while let Some(directory) = directories.pop() {
-        let entries = std::fs::read_dir(&directory).map_err(|error| format!("读取 assrt 解压目录失败: {error}"))?;
+        let entries = std::fs::read_dir(&directory)
+            .map_err(|error| format!("读取 assrt 解压目录失败: {error}"))?;
 
         for entry in entries {
             let entry = entry.map_err(|error| format!("遍历 assrt 解压目录失败: {error}"))?;
@@ -214,13 +228,15 @@ fn read_extracted_subtitles_from_dir(root: &Path) -> Result<Vec<ExtractedSubtitl
                 continue;
             }
 
-            let file_name = path
-                .file_name()
-                .map_or_else(|| "subtitle".into(), |value| value.to_string_lossy().to_string());
+            let file_name = path.file_name().map_or_else(
+                || "subtitle".into(),
+                |value| value.to_string_lossy().to_string(),
+            );
             let Some(format) = normalize_format(&file_name) else {
                 continue;
             };
-            let content = std::fs::read(&path).map_err(|error| format!("读取解压后的 assrt 字幕失败: {error}"))?;
+            let content = std::fs::read(&path)
+                .map_err(|error| format!("读取解压后的 assrt 字幕失败: {error}"))?;
             extracted_files.push(ExtractedSubtitleFile {
                 name: file_name,
                 format,
@@ -232,7 +248,10 @@ fn read_extracted_subtitles_from_dir(root: &Path) -> Result<Vec<ExtractedSubtitl
     Ok(extracted_files)
 }
 
-fn extract_rar_subtitles(archive_path: &Path, output_dir: &Path) -> Result<Vec<ExtractedSubtitleFile>, String> {
+fn extract_rar_subtitles(
+    archive_path: &Path,
+    output_dir: &Path,
+) -> Result<Vec<ExtractedSubtitleFile>, String> {
     let archive = UnrarArchive::new(archive_path).as_first_part();
     let mut archive = archive
         .open_for_processing()
@@ -245,7 +264,8 @@ fn extract_rar_subtitles(archive_path: &Path, output_dir: &Path) -> Result<Vec<E
         archive = if header.entry().is_file() {
             let destination = output_dir.join(&header.entry().filename);
             if let Some(parent) = destination.parent() {
-                std::fs::create_dir_all(parent).map_err(|error| format!("创建 assrt RAR 解压目录失败: {error}"))?;
+                std::fs::create_dir_all(parent)
+                    .map_err(|error| format!("创建 assrt RAR 解压目录失败: {error}"))?;
             }
             header
                 .extract_to(&destination)
@@ -261,8 +281,10 @@ fn extract_rar_subtitles(archive_path: &Path, output_dir: &Path) -> Result<Vec<E
 }
 
 fn extract_zip_subtitles(archive_path: &Path) -> Result<Vec<ExtractedSubtitleFile>, String> {
-    let file = File::open(archive_path).map_err(|error| format!("打开 assrt ZIP 压缩包失败: {error}"))?;
-    let mut archive = ZipArchive::new(file).map_err(|error| format!("读取 assrt ZIP 压缩包失败: {error}"))?;
+    let file =
+        File::open(archive_path).map_err(|error| format!("打开 assrt ZIP 压缩包失败: {error}"))?;
+    let mut archive =
+        ZipArchive::new(file).map_err(|error| format!("读取 assrt ZIP 压缩包失败: {error}"))?;
     let mut extracted_files = Vec::new();
 
     for index in 0..archive.len() {
@@ -275,7 +297,10 @@ fn extract_zip_subtitles(archive_path: &Path) -> Result<Vec<ExtractedSubtitleFil
 
         let file_name = entry
             .enclosed_name()
-            .and_then(|path| path.file_name().map(|value| value.to_string_lossy().to_string()))
+            .and_then(|path| {
+                path.file_name()
+                    .map(|value| value.to_string_lossy().to_string())
+            })
             .unwrap_or_else(|| entry.name().to_string());
         let Some(format) = normalize_format(&file_name) else {
             continue;
@@ -295,13 +320,20 @@ fn extract_zip_subtitles(archive_path: &Path) -> Result<Vec<ExtractedSubtitleFil
     Ok(extracted_files)
 }
 
-fn extract_7z_subtitles(archive_path: &Path, output_dir: &Path) -> Result<Vec<ExtractedSubtitleFile>, String> {
-    decompress_7z_file(archive_path, output_dir).map_err(|error| format!("解压 assrt 7z 字幕失败: {error}"))?;
+fn extract_7z_subtitles(
+    archive_path: &Path,
+    output_dir: &Path,
+) -> Result<Vec<ExtractedSubtitleFile>, String> {
+    decompress_7z_file(archive_path, output_dir)
+        .map_err(|error| format!("解压 assrt 7z 字幕失败: {error}"))?;
 
     read_extracted_subtitles_from_dir(output_dir)
 }
 
-fn parse_detail_download_files(detail_html: &str, _subtitle_id: &str) -> Result<Vec<DetailSubtitleFile>, String> {
+fn parse_detail_download_files(
+    detail_html: &str,
+    _subtitle_id: &str,
+) -> Result<Vec<DetailSubtitleFile>, String> {
     let onthefly_regex = Regex::new(r#"onthefly\("(\d+)","(\d+)","([^"]+)"\)"#)
         .map_err(|error| format!("detail file regex failed: {error}"))?;
     let mut files = Vec::new();
@@ -313,15 +345,18 @@ fn parse_detail_download_files(detail_html: &str, _subtitle_id: &str) -> Result<
         let Some(index) = captures.get(2).map(|value| value.as_str()) else {
             continue;
         };
-        let Some(name) = captures.get(3).map(|value| value.as_str().trim().to_string()) else {
+        let Some(name) = captures
+            .get(3)
+            .map(|value| value.as_str().trim().to_string())
+        else {
             continue;
         };
         let Some(format) = normalize_format(&name) else {
             continue;
         };
         let url = {
-            let mut download_url =
-                url::Url::parse(ASSRT_BASE_URL).map_err(|error| format!("解析 assrt 下载基础地址失败: {error}"))?;
+            let mut download_url = url::Url::parse(ASSRT_BASE_URL)
+                .map_err(|error| format!("解析 assrt 下载基础地址失败: {error}"))?;
             download_url
                 .path_segments_mut()
                 .map_err(|()| "构造 assrt 下载地址失败".to_string())?
@@ -338,7 +373,9 @@ fn parse_detail_download_files(detail_html: &str, _subtitle_id: &str) -> Result<
     Ok(files)
 }
 
-pub async fn search_assrt_subtitles(request: &SubtitleSearchRequest) -> Result<Vec<SubtitleSearchResult>, String> {
+pub async fn search_assrt_subtitles(
+    request: &SubtitleSearchRequest,
+) -> Result<Vec<SubtitleSearchResult>, String> {
     let query = request.query.clone().unwrap_or_default().trim().to_string();
     if query.is_empty() {
         return Err("请输入片名或文件名后再搜索 assrt 字幕".into());
@@ -354,24 +391,29 @@ pub async fn search_assrt_subtitles(request: &SubtitleSearchRequest) -> Result<V
             .build()
             .map_err(|e| format!("创建 assrt HTTP 客户端失败: {e}"))?,
     });
-    let html = assrt_client.fetch_html(&search_url).await.map_err(|e| e.to_string())?;
+    let html = assrt_client
+        .fetch_html(&search_url)
+        .await
+        .map_err(|e| e.to_string())?;
     let document = Html::parse_document(&html);
-    let row_selector =
-        Selector::parse(".resultcard .subitem").map_err(|error| format!("解析 assrt 搜索选择器失败: {error}"))?;
-    let title_selector =
-        Selector::parse(".introtitle").map_err(|error| format!("解析 assrt 标题选择器失败: {error}"))?;
-    let meta_span_selector =
-        Selector::parse("#sublist_div span").map_err(|error| format!("解析 assrt 元数据选择器失败: {error}"))?;
-    let version_selector =
-        Selector::parse("#meta_top b").map_err(|error| format!("解析 assrt 版本选择器失败: {error}"))?;
+    let row_selector = Selector::parse(".resultcard .subitem")
+        .map_err(|error| format!("解析 assrt 搜索选择器失败: {error}"))?;
+    let title_selector = Selector::parse(".introtitle")
+        .map_err(|error| format!("解析 assrt 标题选择器失败: {error}"))?;
+    let meta_span_selector = Selector::parse("#sublist_div span")
+        .map_err(|error| format!("解析 assrt 元数据选择器失败: {error}"))?;
+    let version_selector = Selector::parse("#meta_top b")
+        .map_err(|error| format!("解析 assrt 版本选择器失败: {error}"))?;
     let rating_selector = Selector::parse(r#"img[alt*="用户评分"], img[title*="用户评分"]"#)
         .map_err(|error| format!("解析 assrt 评分选择器失败: {error}"))?;
-    let detail_id_regex = Regex::new(r"/(\d+)\.xml$").map_err(|error| format!("detail id regex failed: {error}"))?;
-    let download_regex =
-        Regex::new(r"location\.href='([^']+)'").map_err(|error| format!("download path regex failed: {error}"))?;
-    let number_regex = Regex::new(r"([\d.]+)").map_err(|error| format!("number regex failed: {error}"))?;
-    let download_count_regex =
-        Regex::new(r"下载次数：\s*(\d+)").map_err(|error| format!("download count regex failed: {error}"))?;
+    let detail_id_regex =
+        Regex::new(r"/(\d+)\.xml$").map_err(|error| format!("detail id regex failed: {error}"))?;
+    let download_regex = Regex::new(r"location\.href='([^']+)'")
+        .map_err(|error| format!("download path regex failed: {error}"))?;
+    let number_regex =
+        Regex::new(r"([\d.]+)").map_err(|error| format!("number regex failed: {error}"))?;
+    let download_count_regex = Regex::new(r"下载次数：\s*(\d+)")
+        .map_err(|error| format!("download count regex failed: {error}"))?;
 
     let mut results = Vec::new();
 
@@ -379,7 +421,10 @@ pub async fn search_assrt_subtitles(request: &SubtitleSearchRequest) -> Result<V
         let Some(detail_anchor) = row.select(&title_selector).next() else {
             continue;
         };
-        let detail_path = detail_anchor.value().attr("href").map(std::string::ToString::to_string);
+        let detail_path = detail_anchor
+            .value()
+            .attr("href")
+            .map(std::string::ToString::to_string);
         let Some(detail_path_value) = detail_path.as_deref() else {
             continue;
         };
@@ -390,7 +435,10 @@ pub async fn search_assrt_subtitles(request: &SubtitleSearchRequest) -> Result<V
             continue;
         };
 
-        let span_texts = row.select(&meta_span_selector).map(text_content).collect::<Vec<_>>();
+        let span_texts = row
+            .select(&meta_span_selector)
+            .map(text_content)
+            .collect::<Vec<_>>();
         let format_text = span_texts
             .iter()
             .find_map(|text| text.strip_prefix("格式："))
@@ -478,7 +526,9 @@ async fn extract_archive(
     preferred_language: &str,
     staging_root: &Path,
 ) -> Result<DownloadedSubtitle, String> {
-    let temp_root = staging_root.join("assrt-subtitles").join(Uuid::new_v4().to_string());
+    let temp_root = staging_root
+        .join("assrt-subtitles")
+        .join(Uuid::new_v4().to_string());
     let result = async {
         let output_dir = temp_root.join("out");
         fs::create_dir_all(&output_dir)
@@ -564,7 +614,10 @@ async fn warm_assrt_session(cookie_jar: &Path) -> Result<(), String> {
     Ok(())
 }
 
-async fn fetch_assrt_detail_html_via_curl(detail_url: &str, cookie_jar: &Path) -> Result<String, String> {
+async fn fetch_assrt_detail_html_via_curl(
+    detail_url: &str,
+    cookie_jar: &Path,
+) -> Result<String, String> {
     let cookie_jar_str = cookie_jar.to_string_lossy().to_string();
     let accept_html = "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
     let detail_output = Command::new("curl")
@@ -591,7 +644,8 @@ async fn fetch_assrt_detail_html_via_curl(detail_url: &str, cookie_jar: &Path) -
         ));
     }
 
-    String::from_utf8(detail_output.stdout).map_err(|error| format!("解码 assrt 详情页失败: {error}"))
+    String::from_utf8(detail_output.stdout)
+        .map_err(|error| format!("解码 assrt 详情页失败: {error}"))
 }
 
 async fn download_detail_subtitle_via_curl(
@@ -704,7 +758,10 @@ async fn download_archive_subtitle(
         .map_err(|e| format!("assrt 请求失败: {e}"))?;
 
     let archive_file_name = filename_from_path(&download_path, &request.subtitle_id);
-    let subtitle_name = request.name.clone().unwrap_or_else(|| archive_file_name.clone());
+    let subtitle_name = request
+        .name
+        .clone()
+        .unwrap_or_else(|| archive_file_name.clone());
 
     if let Some(format) = normalize_format(&archive_file_name) {
         return Ok(DownloadedSubtitle {
@@ -714,7 +771,13 @@ async fn download_archive_subtitle(
         });
     }
 
-    extract_archive(&content, &archive_file_name, &request.language, staging_root).await
+    extract_archive(
+        &content,
+        &archive_file_name,
+        &request.language,
+        staging_root,
+    )
+    .await
 }
 
 pub async fn download_assrt_subtitle(
@@ -722,8 +785,13 @@ pub async fn download_assrt_subtitle(
     staging_root: &Path,
 ) -> Result<DownloadedSubtitle, String> {
     if let Some(detail_path) = request.detail_path.as_deref() {
-        match download_detail_subtitle_via_curl(detail_path, &request.subtitle_id, &request.language, staging_root)
-            .await
+        match download_detail_subtitle_via_curl(
+            detail_path,
+            &request.subtitle_id,
+            &request.language,
+            staging_root,
+        )
+        .await
         {
             Ok(subtitle) => return Ok(subtitle),
             Err(detail_error) => {

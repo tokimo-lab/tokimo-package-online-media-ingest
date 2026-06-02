@@ -62,7 +62,10 @@ impl PostProcessOptions {
 /// 3. Chapter embedding
 /// 4. Cover image embedding
 /// 5. Metadata embedding
-pub async fn postprocess(media_file: &Path, options: &PostProcessOptions) -> Result<PathBuf, String> {
+pub async fn postprocess(
+    media_file: &Path,
+    options: &PostProcessOptions,
+) -> Result<PathBuf, String> {
     if !options.has_work() {
         return Ok(media_file.to_path_buf());
     }
@@ -89,7 +92,9 @@ pub async fn postprocess(media_file: &Path, options: &PostProcessOptions) -> Res
             Ok(()) => {
                 tokio::fs::rename(&temp_output, media_file)
                     .await
-                    .map_err(|err| format!("failed to replace media with faststart output: {err}"))?;
+                    .map_err(|err| {
+                        format!("failed to replace media with faststart output: {err}")
+                    })?;
                 info!(path = %media_file.display(), "faststart applied via subprocess ffmpeg");
                 return Ok(media_file.to_path_buf());
             }
@@ -234,9 +239,9 @@ async fn extract_audio(media_file: &Path, options: &PostProcessOptions) -> Resul
     .map_err(|e| format!("task join error: {e}"))??;
 
     if temp_output != output_path {
-        tokio::fs::remove_file(&output_path)
-            .await
-            .map_err(|err| format!("failed to replace original media during audio extraction: {err}"))?;
+        tokio::fs::remove_file(&output_path).await.map_err(|err| {
+            format!("failed to replace original media during audio extraction: {err}")
+        })?;
         tokio::fs::rename(&temp_output, &output_path)
             .await
             .map_err(|err| format!("failed to finalize extracted audio output: {err}"))?;
@@ -252,7 +257,10 @@ async fn extract_audio(media_file: &Path, options: &PostProcessOptions) -> Resul
 }
 
 /// Generate an ffmetadata chapter file from chapter mark data.
-pub async fn write_chapters_file(staging_dir: &Path, chapters: &[ChapterMark]) -> Result<PathBuf, String> {
+pub async fn write_chapters_file(
+    staging_dir: &Path,
+    chapters: &[ChapterMark],
+) -> Result<PathBuf, String> {
     let mut content = String::from(";FFMETADATA1\n\n");
     for chapter in chapters {
         let start_ms = (chapter.start_seconds * 1000.0) as u64;
@@ -290,7 +298,9 @@ pub fn parse_chapters_from_metadata(raw_metadata: &serde_json::Value) -> Vec<Cha
     chapters_array
         .iter()
         .filter_map(|entry| {
-            let start = entry.get("start_time").and_then(serde_json::Value::as_f64)?;
+            let start = entry
+                .get("start_time")
+                .and_then(serde_json::Value::as_f64)?;
             let end = entry.get("end_time").and_then(serde_json::Value::as_f64)?;
             let title = entry
                 .get("title")

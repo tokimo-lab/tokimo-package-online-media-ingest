@@ -149,7 +149,8 @@ pub fn resolve_ytdlp_binary_at(custom_root: &Path) -> Option<PathBuf> {
         if let Some(file) = existing_file(custom_root.join(binary_name)) {
             return Some(file);
         }
-        if let Some(file) = existing_file(custom_root.join("current").join("bin").join(binary_name)) {
+        if let Some(file) = existing_file(custom_root.join("current").join("bin").join(binary_name))
+        {
             return Some(file);
         }
     }
@@ -224,7 +225,11 @@ async fn ytdlp_version_for_binary(bin: PathBuf) -> Option<String> {
         return None;
     }
     let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if version.is_empty() { None } else { Some(version) }
+    if version.is_empty() {
+        None
+    } else {
+        Some(version)
+    }
 }
 
 /// Run `yt-dlp --version` from a custom install root and return the version string.
@@ -278,7 +283,11 @@ async fn ytdlp_download_to(tag: &str, install_dir: &Path) -> Result<String, Stri
         .await
         .map_err(|e| format!("failed to create dir {}: {e}", install_dir.display()))?;
 
-    let binary_name = if cfg!(windows) { "yt-dlp.exe" } else { "yt-dlp" };
+    let binary_name = if cfg!(windows) {
+        "yt-dlp.exe"
+    } else {
+        "yt-dlp"
+    };
     let dest = install_dir.join(binary_name);
     let temp = install_dir.join(format!(".{binary_name}.tmp"));
 
@@ -323,7 +332,8 @@ pub async fn ytdlp_download_at(tag: &str, custom_root: &Path) -> Result<String, 
 /// Download yt-dlp binary from GitHub releases to the legacy workspace `bin/yt-dlp/`.
 /// Returns the installed version string.
 pub async fn ytdlp_download(tag: &str) -> Result<String, String> {
-    let install_dir = ytdlp_install_dir().ok_or("cannot determine workspace root for yt-dlp install")?;
+    let install_dir =
+        ytdlp_install_dir().ok_or("cannot determine workspace root for yt-dlp install")?;
     ytdlp_download_to(tag, &install_dir).await
 }
 
@@ -338,10 +348,14 @@ pub async fn ensure_ytdlp_available_at(custom_root: &Path) {
     info!(root = %custom_root.display(), "yt-dlp not found, downloading latest release...");
     match ytdlp_latest_version().await {
         Ok(tag) => match ytdlp_download_at(&tag, custom_root).await {
-            Ok(ver) => info!(version = %ver, root = %custom_root.display(), "yt-dlp auto-installed"),
+            Ok(ver) => {
+                info!(version = %ver, root = %custom_root.display(), "yt-dlp auto-installed")
+            }
             Err(e) => warn!(root = %custom_root.display(), "failed to auto-install yt-dlp: {e}"),
         },
-        Err(e) => warn!(root = %custom_root.display(), "failed to check latest yt-dlp version: {e}"),
+        Err(e) => {
+            warn!(root = %custom_root.display(), "failed to check latest yt-dlp version: {e}")
+        }
     }
 }
 

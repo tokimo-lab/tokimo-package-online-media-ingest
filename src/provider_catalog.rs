@@ -12,7 +12,10 @@ const GENERATED_PROVIDER_CATALOG_JSON: &str = include_str!(concat!(
     "/../types/config/online-media-provider-catalog.json"
 ));
 
-const YTDLP_DOMAINS_JSON: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/config/ytdlp-domains.json"));
+const YTDLP_DOMAINS_JSON: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/config/ytdlp-domains.json"
+));
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -41,7 +44,11 @@ impl ProviderCatalogEntry {
             id: self.id.clone(),
             name: self.name.clone(),
             display_name: Some(self.display_name.clone()),
-            supported_content_types: self.supported_content_types.iter().map(ToString::to_string).collect(),
+            supported_content_types: self
+                .supported_content_types
+                .iter()
+                .map(ToString::to_string)
+                .collect(),
             requires_auth: self.requires_auth,
         }
     }
@@ -72,10 +79,14 @@ pub fn find_provider_by_id(id: &str) -> Option<&'static ProviderCatalogEntry> {
 }
 
 pub fn find_provider_by_host(host: &str) -> Option<&'static ProviderCatalogEntry> {
-    provider_catalog().iter().find(|entry| entry.matches_host(host))
+    provider_catalog()
+        .iter()
+        .find(|entry| entry.matches_host(host))
 }
 
-pub fn find_provider_by_extractor_key(extractor_key: &str) -> Option<&'static ProviderCatalogEntry> {
+pub fn find_provider_by_extractor_key(
+    extractor_key: &str,
+) -> Option<&'static ProviderCatalogEntry> {
     provider_catalog()
         .iter()
         .find(|entry| entry.matches_extractor_key(extractor_key))
@@ -188,7 +199,9 @@ const KNOWN_ADULT_EXTRACTOR_KEYWORDS: &[&str] = &[
 
 fn is_adult_extractor_name(name: &str) -> bool {
     let lower = name.to_ascii_lowercase();
-    KNOWN_ADULT_EXTRACTOR_KEYWORDS.iter().any(|kw| lower.contains(kw))
+    KNOWN_ADULT_EXTRACTOR_KEYWORDS
+        .iter()
+        .any(|kw| lower.contains(kw))
 }
 
 /// Lazily-parsed yt-dlp extractor domain map (module name -> domain).
@@ -281,7 +294,10 @@ async fn discover_ytdlp_extractors() -> Vec<ProviderListEntry> {
 
         // Skip if the extractor name contains a native site keyword.
         // One-directional only: keyword must appear inside the extractor name.
-        if native_keywords.iter().any(|kw| base_lower.contains(kw.as_str())) {
+        if native_keywords
+            .iter()
+            .any(|kw| base_lower.contains(kw.as_str()))
+        {
             continue;
         }
 
@@ -302,7 +318,10 @@ async fn discover_ytdlp_extractors() -> Vec<ProviderListEntry> {
             auth_configurable: false,
             common_source_sites: vec![base.to_string()],
             source_site_aliases: vec![],
-            host_suffixes: domain_map.get(&base_lower).map(|d| vec![d.clone()]).unwrap_or_default(),
+            host_suffixes: domain_map
+                .get(&base_lower)
+                .map(|d| vec![d.clone()])
+                .unwrap_or_default(),
         });
     }
 

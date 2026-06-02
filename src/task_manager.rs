@@ -149,7 +149,8 @@ impl TaskManager {
             } else if let (Some(downloaded), Some(total)) = (downloaded_bytes, total_bytes)
                 && total > 0
             {
-                task.progress = Some(((downloaded as f64 / total as f64) * 100.0).clamp(0.0, 100.0));
+                task.progress =
+                    Some(((downloaded as f64 / total as f64) * 100.0).clamp(0.0, 100.0));
             }
             task.downloaded_bytes = downloaded_bytes.or(task.downloaded_bytes);
             task.total_bytes = total_bytes.or(task.total_bytes);
