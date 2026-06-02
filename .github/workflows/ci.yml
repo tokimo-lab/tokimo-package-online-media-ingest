@@ -52,7 +52,7 @@ jobs:
           path: tokimo-lib
           key: tokimo-lib-${{ env.TOKIMO_LIB_VERSION }}-${{ matrix.arch }}
 
-      - name: Extract native bundle
+      - name: Download native bundle
         if: steps.cache.outputs.cache-hit != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -61,8 +61,13 @@ jobs:
             --repo tokimo-lab/tokimo-lib \
             --pattern "*${{ matrix.arch }}*.tar.zst" \
             --output bundle.tar.zst
+
+      - name: Extract native bundle
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
           mkdir -p tokimo-lib
-          tar --use-compress-program=unzstd -xf bundle.tar.zst -C tokimo-lib
+          zstd -dc bundle.tar.zst | tar -xf - -C tokimo-lib
+          rm -f bundle.tar.zst
 
       - name: Set library paths
         shell: bash
