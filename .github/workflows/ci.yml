@@ -87,7 +87,13 @@ jobs:
           else
             echo "LD_LIBRARY_PATH=${LIB_DIR}" >> "$GITHUB_ENV"
           fi
-          echo "PKG_CONFIG_PATH=${LIB_DIR}" >> "$GITHUB_ENV"
+          {
+            echo "PKG_CONFIG_PATH=${LIB_DIR}"
+            echo "FFMPEG_PKG_CONFIG_PATH=${LIB_DIR}"
+            echo "FFMPEG_INCLUDE_DIR=$(pwd)/tokimo-lib/include"
+            echo "FFMPEG_LIBS_DIR=${LIB_DIR}"
+            echo "FFMPEG_LINK_MODE=dynamic"
+          } >> "$GITHUB_ENV"
 
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
