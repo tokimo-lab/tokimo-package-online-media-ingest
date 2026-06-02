@@ -9,7 +9,7 @@ use crate::models::{OnlineMediaProvider, ProviderListEntry, ProviderListResponse
 
 const GENERATED_PROVIDER_CATALOG_JSON: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../types/config/online-media-provider-catalog.json"
+    "/config/online-media-provider-catalog.json"
 ));
 
 const YTDLP_DOMAINS_JSON: &str = include_str!(concat!(
