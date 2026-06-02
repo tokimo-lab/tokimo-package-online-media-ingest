@@ -31,9 +31,6 @@ jobs:
           - os: macos-latest
             lib_path: DYLD_FALLBACK_LIBRARY_PATH
             asset: tokimo-lib-macos-aarch64.tar.zst
-          - os: windows-latest
-            lib_path: PATH
-            asset: tokimo-lib-windows-x86_64.tar.zst
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -45,14 +42,6 @@ jobs:
       - name: Install zstd (macOS)
         if: runner.os == 'macOS'
         run: brew install zstd
-
-      - name: Install zstd (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          if (-not (Get-Command zstd -ErrorAction SilentlyContinue)) {
-            choco install zstandard -y --no-progress
-          }
 
       - name: Cache tokimo-lib
         id: tokimo_lib_cache
@@ -82,9 +71,7 @@ jobs:
           LIB_DIR="$(pwd)/tokimo-lib/lib"
           PKG_DIR="${LIB_DIR}/pkgconfig"
           INC_DIR="$(pwd)/tokimo-lib/include"
-          if [ "$RUNNER_OS" = "Windows" ]; then
-            echo "$LIB_DIR" >> "$GITHUB_PATH"
-          elif [ "$RUNNER_OS" = "macOS" ]; then
+          if [ "$RUNNER_OS" = "macOS" ]; then
             echo "DYLD_FALLBACK_LIBRARY_PATH=${LIB_DIR}" >> "$GITHUB_ENV"
           else
             echo "LD_LIBRARY_PATH=${LIB_DIR}" >> "$GITHUB_ENV"
