@@ -30,5 +30,5 @@ unrar = "0.5"
 url = "2"
 uuid = { version = "1", features = ["v4", "serde"] }
 zip = { version = "8", default-features = false, features = ["deflate"] }
-tokimo-package-ffmpeg = { path = "../tokimo-package-ffmpeg" }
-tokimo-package-client-api = { path = "../tokimo-package-client-api" }
+tokimo-package-ffmpeg = { git = "https://github.com/tokimo-lab/tokimo-package-ffmpeg" }
+tokimo-package-client-api = { git = "https://github.com/tokimo-lab/tokimo-package-client-api" }
