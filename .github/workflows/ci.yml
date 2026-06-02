@@ -88,6 +88,7 @@ jobs:
             echo "DYLD_FALLBACK_LIBRARY_PATH=${LIB_DIR}" >> "$GITHUB_ENV"
           else
             echo "LD_LIBRARY_PATH=${LIB_DIR}" >> "$GITHUB_ENV"
+            echo "LIBRARY_PATH=${LIB_DIR}" >> "$GITHUB_ENV"
           fi
           {
             echo "PKG_CONFIG_PATH=${PKG_DIR}"
