@@ -27,58 +27,69 @@ jobs:
         include:
           - os: ubuntu-latest
             lib_path: LD_LIBRARY_PATH
-            arch: linux-x86_64
+            asset: tokimo-lib-linux-x86_64.tar.zst
           - os: macos-latest
             lib_path: DYLD_FALLBACK_LIBRARY_PATH
-            arch: darwin-aarch64
+            asset: tokimo-lib-macos-aarch64.tar.zst
           - os: windows-latest
             lib_path: PATH
-            arch: windows-x86_64
+            asset: tokimo-lib-windows-x86_64.tar.zst
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
 
-      - name: Install zstd
-        if: runner.os != 'Windows'
+      - name: Install zstd (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y --no-install-recommends zstd
+
+      - name: Install zstd (macOS)
+        if: runner.os == 'macOS'
+        run: brew install zstd
+
+      - name: Install zstd (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          if [ "$RUNNER_OS" = "Linux" ]; then sudo apt-get install -y zstd; fi
-          if [ "$RUNNER_OS" = "macOS" ]; then brew install zstd; fi
+          if (-not (Get-Command zstd -ErrorAction SilentlyContinue)) {
+            choco install zstandard -y --no-progress
+          }
 
-      - name: Download native bundle
+      - name: Cache tokimo-lib
+        id: tokimo_lib_cache
         uses: actions/cache@v4
         with:
           path: tokimo-lib
-          key: tokimo-lib-${{ env.TOKIMO_LIB_VERSION }}-${{ matrix.arch }}
+          key: tokimo-lib-${{ matrix.asset }}-${{ env.TOKIMO_LIB_VERSION }}
 
       - name: Download native bundle
-        if: steps.cache.outputs.cache-hit != 'true'
+        if: steps.tokimo_lib_cache.outputs.cache-hit != 'true'
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release download ${{ env.TOKIMO_LIB_VERSION }} \
+          set -euo pipefail
+          gh release download "${TOKIMO_LIB_VERSION}" \
             --repo tokimo-lab/tokimo-lib \
-            --pattern "*${{ matrix.arch }}*.tar.zst" \
-            --output bundle.tar.zst
-
-      - name: Extract native bundle
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: |
+            --pattern "${{ matrix.asset }}" \
+            --dir .
           mkdir -p tokimo-lib
-          zstd -dc bundle.tar.zst | tar -xf - -C tokimo-lib
-          rm -f bundle.tar.zst
+          zstd -dc "${{ matrix.asset }}" | tar -xf - -C tokimo-lib
+          rm -f "${{ matrix.asset }}"
 
       - name: Set library paths
         shell: bash
         run: |
           LIB_DIR="$(pwd)/tokimo-lib/current/lib"
           if [ "$RUNNER_OS" = "Windows" ]; then
-            echo "$LIB_DIR" >> $GITHUB_PATH
+            echo "$LIB_DIR" >> "$GITHUB_PATH"
+          elif [ "$RUNNER_OS" = "macOS" ]; then
+            echo "DYLD_FALLBACK_LIBRARY_PATH=${LIB_DIR}" >> "$GITHUB_ENV"
           else
-            echo "${{ matrix.lib_path }}=${LIB_DIR}${{ matrix.lib_path && ':$' || '' }}${{ matrix.lib_path }}" >> $GITHUB_ENV
+            echo "LD_LIBRARY_PATH=${LIB_DIR}" >> "$GITHUB_ENV"
           fi
 
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
       - run: cargo build --workspace
       - run: cargo test --workspace
       - name: Clippy
