@@ -80,6 +80,8 @@ jobs:
         shell: bash
         run: |
           LIB_DIR="$(pwd)/tokimo-lib/lib"
+          PKG_DIR="${LIB_DIR}/pkgconfig"
+          INC_DIR="$(pwd)/tokimo-lib/include"
           if [ "$RUNNER_OS" = "Windows" ]; then
             echo "$LIB_DIR" >> "$GITHUB_PATH"
           elif [ "$RUNNER_OS" = "macOS" ]; then
@@ -88,9 +90,9 @@ jobs:
             echo "LD_LIBRARY_PATH=${LIB_DIR}" >> "$GITHUB_ENV"
           fi
           {
-            echo "PKG_CONFIG_PATH=${LIB_DIR}"
-            echo "FFMPEG_PKG_CONFIG_PATH=${LIB_DIR}"
-            echo "FFMPEG_INCLUDE_DIR=$(pwd)/tokimo-lib/include"
+            echo "PKG_CONFIG_PATH=${PKG_DIR}"
+            echo "FFMPEG_PKG_CONFIG_PATH=${PKG_DIR}"
+            echo "FFMPEG_INCLUDE_DIR=${INC_DIR}"
             echo "FFMPEG_LIBS_DIR=${LIB_DIR}"
             echo "FFMPEG_LINK_MODE=dynamic"
           } >> "$GITHUB_ENV"
