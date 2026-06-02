@@ -54,6 +54,8 @@ jobs:
 
       - name: Extract native bundle
         if: steps.cache.outputs.cache-hit != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           gh release download ${{ env.TOKIMO_LIB_VERSION }} \
             --repo tokimo-lab/tokimo-lib \
