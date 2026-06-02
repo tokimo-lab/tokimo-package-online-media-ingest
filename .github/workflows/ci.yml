@@ -68,9 +68,9 @@ jobs:
       - name: Set library paths
         shell: bash
         run: |
-          LIB_DIR="$(pwd)/tokimo-lib/lib"
+          LIB_DIR="${{ github.workspace }}/tokimo-lib/lib"
           PKG_DIR="${LIB_DIR}/pkgconfig"
-          INC_DIR="$(pwd)/tokimo-lib/include"
+          INC_DIR="${{ github.workspace }}/tokimo-lib/include"
           if [ "$RUNNER_OS" = "macOS" ]; then
             echo "DYLD_FALLBACK_LIBRARY_PATH=${LIB_DIR}" >> "$GITHUB_ENV"
           else
