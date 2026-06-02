@@ -79,8 +79,7 @@ jobs:
       - name: Set library paths
         shell: bash
         run: |
-          LIB_DIR="$(pwd)/tokimo-lib/current/lib"
-          PKG_DIR="${LIB_DIR}/pkgconfig"
+          LIB_DIR="$(pwd)/tokimo-lib/lib"
           if [ "$RUNNER_OS" = "Windows" ]; then
             echo "$LIB_DIR" >> "$GITHUB_PATH"
           elif [ "$RUNNER_OS" = "macOS" ]; then
@@ -88,7 +87,7 @@ jobs:
           else
             echo "LD_LIBRARY_PATH=${LIB_DIR}" >> "$GITHUB_ENV"
           fi
-          echo "PKG_CONFIG_PATH=${PKG_DIR}" >> "$GITHUB_ENV"
+          echo "PKG_CONFIG_PATH=${LIB_DIR}" >> "$GITHUB_ENV"
 
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
