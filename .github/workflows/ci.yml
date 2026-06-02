@@ -9,21 +9,10 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  TOKIMO_LIB_VERSION: v1.1.10
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo build --workspace
-      - run: cargo test --workspace
-
-  lint:
+  fmt:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,3 +22,57 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --all -- --check
       - run: cargo clippy --workspace --lib --bins --tests -- -D warnings
+
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            lib_path: LD_LIBRARY_PATH
+            arch: linux-x86_64
+          - os: macos-latest
+            lib_path: DYLD_FALLBACK_LIBRARY_PATH
+            arch: darwin-aarch64
+          - os: windows-latest
+            lib_path: PATH
+            arch: windows-x86_64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install zstd
+        if: runner.os != 'Windows'
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then sudo apt-get install -y zstd; fi
+          if [ "$RUNNER_OS" = "macOS" ]; then brew install zstd; fi
+
+      - name: Download native bundle
+        uses: actions/cache@v4
+        with:
+          path: tokimo-lib
+          key: tokimo-lib-${{ env.TOKIMO_LIB_VERSION }}-${{ matrix.arch }}
+
+      - name: Extract native bundle
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          gh release download ${{ env.TOKIMO_LIB_VERSION }} \
+            --repo tokimo-lab/tokimo-lib \
+            --pattern "*${{ matrix.arch }}*.tar.zst" \
+            --output bundle.tar.zst
+          mkdir -p tokimo-lib
+          tar --use-compress-program=unzstd -xf bundle.tar.zst -C tokimo-lib
+
+      - name: Set library paths
+        shell: bash
+        run: |
+          LIB_DIR="$(pwd)/tokimo-lib/current/lib"
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            echo "$LIB_DIR" >> $GITHUB_PATH
+          else
+            echo "${{ matrix.lib_path }}=${LIB_DIR}${{ matrix.lib_path && ':$' || '' }}${{ matrix.lib_path }}" >> $GITHUB_ENV
+          fi
+
+      - run: cargo build --workspace
+      - run: cargo test --workspace
