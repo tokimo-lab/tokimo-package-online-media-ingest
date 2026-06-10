@@ -2,8 +2,8 @@ use tracing::warn;
 use url::Url;
 
 use crate::models::{
-    AnalyzeOnlineMediaRequest, AnalyzeOnlineMediaResponse, CollectionItem, OnlineMediaCapability,
-    OnlineMediaProvider, ResolveCollectionRequest, ResolveCollectionResponse,
+    AnalyzeOnlineMediaRequest, AnalyzeOnlineMediaResponse, CollectionItem, OnlineMediaCapability, OnlineMediaProvider,
+    ResolveCollectionRequest, ResolveCollectionResponse,
 };
 use crate::music::merge_content_types;
 use crate::native::{AnalyzeResult, ytdlp_analyze};
@@ -24,9 +24,7 @@ fn extract_bilibili_bv_from_url(url: &str) -> Option<String> {
     let parsed = Url::parse(url).ok()?;
     parsed.path_segments()?.find_map(|segment| {
         let normalized = segment.trim();
-        normalized
-            .strip_prefix("BV")
-            .map(|suffix| format!("BV{suffix}"))
+        normalized.strip_prefix("BV").map(|suffix| format!("BV{suffix}"))
     })
 }
 
@@ -87,8 +85,7 @@ fn extract_source_id_from_url(parsed: &Url, raw_url: &str, provider_id: &str) ->
 
 fn detect_provider(url: &str) -> Option<ProviderMatch> {
     if is_stream_url(url) {
-        return find_provider_by_id("stream")
-            .map(|entry| match_catalog_provider(entry, url, None, None, None));
+        return find_provider_by_id("stream").map(|entry| match_catalog_provider(entry, url, None, None, None));
     }
 
     let parsed = Url::parse(url).ok()?;
@@ -97,13 +94,7 @@ fn detect_provider(url: &str) -> Option<ProviderMatch> {
     let entry = find_provider_by_host(&host)?;
     let source_id = extract_source_id_from_url(&parsed, url, &entry.id);
     let external_id = source_id.clone();
-    Some(match_catalog_provider(
-        entry,
-        url,
-        external_id,
-        source_id,
-        None,
-    ))
+    Some(match_catalog_provider(entry, url, external_id, source_id, None))
 }
 
 fn apply_ytdlp_analysis(response: &mut AnalyzeOnlineMediaResponse, result: AnalyzeResult) {
@@ -164,9 +155,7 @@ pub async fn analyze_url(input: &AnalyzeOnlineMediaRequest) -> AnalyzeOnlineMedi
         release_date: None,
         external_id: matched.as_ref().and_then(|value| value.external_id.clone()),
         content_type: matched.as_ref().map(|value| value.content_type.clone()),
-        requires_auth: matched
-            .as_ref()
-            .is_some_and(|value| value.provider.requires_auth),
+        requires_auth: matched.as_ref().is_some_and(|value| value.provider.requires_auth),
         warnings: Vec::new(),
         raw_metadata: None,
     };
@@ -212,17 +201,10 @@ pub async fn analyze_url(input: &AnalyzeOnlineMediaRequest) -> AnalyzeOnlineMedi
 }
 
 /// Resolve a collection (playlist / channel) URL into individual items via yt-dlp `--flat-playlist`.
-pub async fn resolve_collection_url(
-    input: &ResolveCollectionRequest,
-) -> Result<ResolveCollectionResponse, String> {
+pub async fn resolve_collection_url(input: &ResolveCollectionRequest) -> Result<ResolveCollectionResponse, String> {
     let ytdlp = resolve_ytdlp_binary().ok_or("yt-dlp binary not found")?;
 
-    let mut args = vec![
-        "--flat-playlist",
-        "--dump-json",
-        "--no-warnings",
-        "--ignore-errors",
-    ];
+    let mut args = vec!["--flat-playlist", "--dump-json", "--no-warnings", "--ignore-errors"];
 
     // Write cookie file if auth provided
     let cookie_tempfile = if let Some(ref auth) = input.auth {
@@ -310,10 +292,7 @@ pub async fn resolve_collection_url(
 
         items.push(CollectionItem {
             url,
-            title: entry
-                .get("title")
-                .and_then(|v| v.as_str())
-                .map(String::from),
+            title: entry.get("title").and_then(|v| v.as_str()).map(String::from),
             thumbnail_url: entry
                 .get("thumbnails")
                 .and_then(|t| t.as_array())

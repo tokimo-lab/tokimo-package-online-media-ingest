@@ -65,10 +65,7 @@ pub fn merge_content_types(existing: Option<String>, incoming: Option<String>) -
 }
 
 pub fn detect_ytdlp_content_type(raw_metadata: Option<&Value>) -> String {
-    if has_strong_music_metadata(raw_metadata)
-        || has_music_category(raw_metadata)
-        || has_music_url_hint(raw_metadata)
-    {
+    if has_strong_music_metadata(raw_metadata) || has_music_category(raw_metadata) || has_music_url_hint(raw_metadata) {
         "music".into()
     } else {
         "online_video".into()
@@ -115,10 +112,7 @@ pub fn extract_music_metadata(raw_metadata: Option<&Value>) -> MusicMetadata {
     let album = first_string(raw_metadata, &["album", "playlist_title", "playlist"]);
     let title = first_string(raw_metadata, &["track"]);
     let artist = first_string(raw_metadata, &["artist", "artists", "creator", "uploader"]);
-    let album_artist = first_string(
-        raw_metadata,
-        &["album_artist", "creator", "artist", "uploader"],
-    );
+    let album_artist = first_string(raw_metadata, &["album_artist", "creator", "artist", "uploader"]);
 
     MusicMetadata {
         title,
@@ -170,11 +164,7 @@ pub fn build_audio_metadata_pairs(
     {
         pairs.push(("title".into(), title.to_string()));
     }
-    if let Some(artist) = metadata
-        .artist
-        .as_deref()
-        .or(fallback_artist)
-        .map(str::trim)
+    if let Some(artist) = metadata.artist.as_deref().or(fallback_artist).map(str::trim)
         && !artist.is_empty()
     {
         pairs.push(("artist".into(), artist.to_string()));
@@ -266,12 +256,7 @@ fn first_release_date(value: &Value) -> Option<String> {
 fn normalize_release_date(value: &str) -> Option<String> {
     let trimmed = value.trim();
     if trimmed.len() == 8 && trimmed.chars().all(|ch| ch.is_ascii_digit()) {
-        return Some(format!(
-            "{}-{}-{}",
-            &trimmed[0..4],
-            &trimmed[4..6],
-            &trimmed[6..8]
-        ));
+        return Some(format!("{}-{}-{}", &trimmed[0..4], &trimmed[4..6], &trimmed[6..8]));
     }
 
     if trimmed.len() == 4 && trimmed.chars().all(|ch| ch.is_ascii_digit()) {
@@ -300,11 +285,9 @@ fn has_music_category(raw_metadata: Option<&Value>) -> bool {
         .and_then(|metadata| metadata.get("categories"))
         .and_then(|value| value.as_array())
         .is_some_and(|categories| {
-            categories.iter().any(|entry| {
-                entry
-                    .as_str()
-                    .is_some_and(|text| text.eq_ignore_ascii_case("music"))
-            })
+            categories
+                .iter()
+                .any(|entry| entry.as_str().is_some_and(|text| text.eq_ignore_ascii_case("music")))
         })
 }
 

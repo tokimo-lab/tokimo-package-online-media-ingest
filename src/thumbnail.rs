@@ -9,7 +9,8 @@ use crate::tooling::display_path;
 
 const THUMBNAIL_ARTIFACT_DIR: &str = ".artifacts";
 const THUMBNAIL_FILE_STEM: &str = "thumbnail";
-const THUMBNAIL_USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36";
+const THUMBNAIL_USER_AGENT: &str =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36";
 
 #[derive(Debug, Clone)]
 pub struct DownloadedThumbnail {
@@ -71,10 +72,7 @@ fn resolve_thumbnail_extension(content_type: Option<&str>, url: &str) -> String 
         .unwrap_or_else(|| "jpg".into())
 }
 
-fn resolve_thumbnail_url(
-    request: &CreateTaskRequest,
-    analyze: &AnalyzeOnlineMediaResponse,
-) -> Option<String> {
+fn resolve_thumbnail_url(request: &CreateTaskRequest, analyze: &AnalyzeOnlineMediaResponse) -> Option<String> {
     request
         .metadata
         .thumbnail_url
@@ -95,8 +93,7 @@ pub fn is_media_sidecar_target(path: &Path) -> bool {
     };
     let extension = normalize_extension(extension);
 
-    !matches!(extension.as_str(), "json" | "nfo" | "part" | "tmp" | "ytdl")
-        && !is_image_extension(&extension)
+    !matches!(extension.as_str(), "json" | "nfo" | "part" | "tmp" | "ytdl") && !is_image_extension(&extension)
 }
 
 pub async fn download_thumbnail_artifact(
@@ -132,9 +129,7 @@ pub async fn download_thumbnail_artifact(
         .await
         .map_err(|err| format!("failed to read thumbnail {thumbnail_url}: {err}"))?;
     if bytes.is_empty() {
-        return Err(format!(
-            "thumbnail request returned empty body for {thumbnail_url}"
-        ));
+        return Err(format!("thumbnail request returned empty body for {thumbnail_url}"));
     }
 
     let asset_dir = staging_dir.join(THUMBNAIL_ARTIFACT_DIR);
@@ -176,22 +171,17 @@ pub async fn write_thumbnail_sidecar_files(
             continue;
         };
         let destination_path = target_dir.join(format!("{stem}.{}", thumbnail.extension));
-        if created_paths
-            .iter()
-            .any(|path: &PathBuf| path == &destination_path)
-        {
+        if created_paths.iter().any(|path: &PathBuf| path == &destination_path) {
             continue;
         }
 
-        fs::copy(&thumbnail.path, &destination_path)
-            .await
-            .map_err(|err| {
-                format!(
-                    "failed to copy thumbnail {} to {}: {err}",
-                    display_path(&thumbnail.path),
-                    display_path(&destination_path),
-                )
-            })?;
+        fs::copy(&thumbnail.path, &destination_path).await.map_err(|err| {
+            format!(
+                "failed to copy thumbnail {} to {}: {err}",
+                display_path(&thumbnail.path),
+                display_path(&destination_path),
+            )
+        })?;
 
         let metadata = fs::metadata(&destination_path).await.map_err(|err| {
             format!(
@@ -220,10 +210,7 @@ mod tests {
     #[test]
     fn prefers_extension_from_content_type() {
         assert_eq!(
-            resolve_thumbnail_extension(
-                Some("image/png; charset=binary"),
-                "https://example.com/poster.jpg"
-            ),
+            resolve_thumbnail_extension(Some("image/png; charset=binary"), "https://example.com/poster.jpg"),
             "png"
         );
     }

@@ -10,13 +10,11 @@ use tracing::{info, warn};
 
 use crate::AppState;
 use crate::engine::format::sanitize_filename;
-use crate::engine::postprocess::{
-    PostProcessOptions, parse_chapters_from_metadata, postprocess, write_chapters_file,
-};
+use crate::engine::postprocess::{PostProcessOptions, parse_chapters_from_metadata, postprocess, write_chapters_file};
 use crate::models::CreateTaskRequest;
 use crate::music::{
-    build_audio_metadata_pairs, detect_ytdlp_content_type, extract_music_metadata,
-    is_music_content_type, music_metadata_from_task,
+    build_audio_metadata_pairs, detect_ytdlp_content_type, extract_music_metadata, is_music_content_type,
+    music_metadata_from_task,
 };
 use crate::tooling::resolve_ytdlp_binary;
 
@@ -54,9 +52,9 @@ struct DownloadProgress {
 }
 
 fn should_download_audio_only(request: &CreateTaskRequest) -> bool {
-    request.audio_only.unwrap_or_else(|| {
-        is_music_content_type(&request.target_folder_config_snapshot.content_type)
-    })
+    request
+        .audio_only
+        .unwrap_or_else(|| is_music_content_type(&request.target_folder_config_snapshot.content_type))
 }
 
 /// Analyze a URL using yt-dlp `--dump-json`.
@@ -82,8 +80,8 @@ pub async fn ytdlp_analyze(url: &str) -> Result<AnalyzeResult, String> {
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let info: Value = serde_json::from_str(stdout.trim())
-        .map_err(|err| format!("failed to parse yt-dlp JSON: {err}"))?;
+    let info: Value =
+        serde_json::from_str(stdout.trim()).map_err(|err| format!("failed to parse yt-dlp JSON: {err}"))?;
 
     let title = json_str(&info, "title").map(String::from);
     let description = json_str(&info, "description").map(String::from);
@@ -156,17 +154,10 @@ pub async fn ytdlp_download(
     ];
 
     // Pass cookies from auth
-    if let Some(cookie_header) = request
-        .auth
-        .as_ref()
-        .and_then(|a| a.cookie_header.as_deref())
-    {
+    if let Some(cookie_header) = request.auth.as_ref().and_then(|a| a.cookie_header.as_deref()) {
         let cookie_file = staging_dir.join("_cookies.txt");
         write_cookie_file(&cookie_file, &request.url, cookie_header).await?;
-        args.extend([
-            "--cookies".into(),
-            cookie_file.to_string_lossy().into_owned(),
-        ]);
+        args.extend(["--cookies".into(), cookie_file.to_string_lossy().into_owned()]);
     }
 
     if audio_only {
@@ -411,11 +402,7 @@ fn parse_progress_number(value: &str) -> Option<u64> {
     })
 }
 
-pub(crate) async fn write_cookie_file(
-    path: &Path,
-    url: &str,
-    cookie_header: &str,
-) -> Result<(), String> {
+pub(crate) async fn write_cookie_file(path: &Path, url: &str, cookie_header: &str) -> Result<(), String> {
     let domain = url::Url::parse(url)
         .ok()
         .and_then(|u| u.host_str().map(String::from))
@@ -499,8 +486,7 @@ async fn try_merge_separate_streams(staging_dir: &Path) -> Result<(), String> {
     for path in &format_coded_files {
         let path_clone = path.clone();
         let path_str = path.to_string_lossy().into_owned();
-        let probe_result =
-            tokio::task::spawn_blocking(move || tokimo_package_ffmpeg::probe_file(&path_str)).await;
+        let probe_result = tokio::task::spawn_blocking(move || tokimo_package_ffmpeg::probe_file(&path_str)).await;
 
         let has_video = match &probe_result {
             Ok(Ok(info)) => info.streams.iter().any(|s| s.video.is_some()),
@@ -537,10 +523,7 @@ async fn try_merge_separate_streams(staging_dir: &Path) -> Result<(), String> {
     }
 
     let (Some(video), Some(audio)) = (video_file, audio_file) else {
-        let files: Vec<_> = format_coded_files
-            .iter()
-            .map(|p| p.display().to_string())
-            .collect();
+        let files: Vec<_> = format_coded_files.iter().map(|p| p.display().to_string()).collect();
         info!(
             ?files,
             "skipping AV merge: could not identify separate video and audio files"
@@ -549,10 +532,7 @@ async fn try_merge_separate_streams(staging_dir: &Path) -> Result<(), String> {
     };
 
     // Derive merged output name by stripping the format code
-    let video_name = video
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("merged.mp4");
+    let video_name = video.file_name().and_then(|n| n.to_str()).unwrap_or("merged.mp4");
     let merged_name = FORMAT_CODE_RE.replace(video_name, ".mp4");
     let merged_path = staging_dir.join(merged_name.as_ref());
 
@@ -567,8 +547,7 @@ async fn try_merge_separate_streams(staging_dir: &Path) -> Result<(), String> {
     let a = audio.clone();
     let out = merged_path.clone();
     tokio::task::spawn_blocking(move || {
-        tokimo_package_ffmpeg::merge_av(&v, &a, &out)
-            .map_err(|e| format!("FFI merge_av failed: {e}"))
+        tokimo_package_ffmpeg::merge_av(&v, &a, &out).map_err(|e| format!("FFI merge_av failed: {e}"))
     })
     .await
     .map_err(|e| format!("task join error: {e}"))??;
@@ -603,11 +582,10 @@ async fn try_convert_audio(staging_dir: &Path, target_fmt: &str) -> Result<(), S
 
     // Probe source to preserve sample rate and channel count.
     let probe_path = media_file.to_string_lossy().into_owned();
-    let probe_info =
-        tokio::task::spawn_blocking(move || tokimo_package_ffmpeg::probe_file(&probe_path))
-            .await
-            .map_err(|e| format!("probe task error: {e}"))?
-            .map_err(|e| format!("failed to probe audio file: {e}"))?;
+    let probe_info = tokio::task::spawn_blocking(move || tokimo_package_ffmpeg::probe_file(&probe_path))
+        .await
+        .map_err(|e| format!("probe task error: {e}"))?
+        .map_err(|e| format!("failed to probe audio file: {e}"))?;
 
     let audio_stream = probe_info
         .streams
@@ -680,9 +658,7 @@ async fn find_media_file(staging_dir: &Path) -> Result<std::path::PathBuf, Strin
         .await
         .map_err(|err| format!("failed to read staging dir: {err}"))?;
 
-    let media_extensions = [
-        "mp4", "mkv", "webm", "m4a", "mp3", "flac", "ogg", "avi", "mov",
-    ];
+    let media_extensions = ["mp4", "mkv", "webm", "m4a", "mp3", "flac", "ogg", "avi", "mov"];
 
     while let Ok(Some(entry)) = entries.next_entry().await {
         let path = entry.path();

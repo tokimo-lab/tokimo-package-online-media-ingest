@@ -10,10 +10,9 @@ use axum::{
 
 use crate::AppState;
 use crate::models::{
-    AnalyzeOnlineMediaRequest, BatchCreateTasksRequest, BatchCreateTasksResponse,
-    CancelTaskResponse, CreateTaskRequest, CreateTaskResponse, HealthResponse,
-    ProviderListResponse, ResolveCollectionRequest, ResolveCollectionResponse, TaskStatusResponse,
-    YtdlpStatusResponse, YtdlpUpdateResponse,
+    AnalyzeOnlineMediaRequest, BatchCreateTasksRequest, BatchCreateTasksResponse, CancelTaskResponse,
+    CreateTaskRequest, CreateTaskResponse, HealthResponse, ProviderListResponse, ResolveCollectionRequest,
+    ResolveCollectionResponse, TaskStatusResponse, YtdlpStatusResponse, YtdlpUpdateResponse,
 };
 use crate::providers::{analyze_url, resolve_collection_url};
 use crate::runtime::spawn_task;
@@ -69,10 +68,7 @@ async fn get_task(
         .ok_or(StatusCode::NOT_FOUND)
 }
 
-async fn cancel_task(
-    State(state): State<Arc<AppState>>,
-    Path(task_id): Path<String>,
-) -> Json<CancelTaskResponse> {
+async fn cancel_task(State(state): State<Arc<AppState>>, Path(task_id): Path<String>) -> Json<CancelTaskResponse> {
     Json(CancelTaskResponse {
         success: state.tasks.request_cancel(&task_id).await,
     })

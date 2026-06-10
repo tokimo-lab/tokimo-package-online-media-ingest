@@ -24,8 +24,7 @@ async fn main() {
         .init();
 
     let args = Args::parse();
-    let data_local_path =
-        std::env::var("DATA_LOCAL_PATH").unwrap_or_else(|_| "./.data".to_string());
+    let data_local_path = std::env::var("DATA_LOCAL_PATH").unwrap_or_else(|_| "./.data".to_string());
     let state = Arc::new(AppState {
         staging_root: PathBuf::from(format!("{data_local_path}/online-media-ingest")),
         tasks: Arc::new(TaskManager::new()),
